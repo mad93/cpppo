@@ -2,9 +2,10 @@
 # GNU 'make' file
 # 
 
-# PY[23] is the target Python interpreter.  It must have pytest installed.
+# PY[3] is the target Python interpreter.  It must have pytest installed.
 
-PY2=python
+PY=python
+PY2=python2
 PY3=python3
 
 # PY[23]TEST is the desired method of invoking py.test; either as a command, or
@@ -37,12 +38,7 @@ PY3=python3
 # To see all pytest output, uncomment --capture=no
 PYTESTOPTS=-v # --capture=no
 
-# Preferred timezone for tests.  If you change this, then you will probably have
-# to augment history_test.py to include checking for timestamp.local output in
-# your local timezone; See history_test.py test_history_timestamp() for supported
-# zones
-TZ=Canada/Mountain
-
+PY_TEST=TZ=$(TZ) $(PY)  -m pytest $(PYTESTOPTS)
 PY2TEST=TZ=$(TZ) $(PY2) -m pytest $(PYTESTOPTS)
 PY3TEST=TZ=$(TZ) $(PY3) -m pytest $(PYTESTOPTS)
 
@@ -71,19 +67,29 @@ help:
 	@echo "  vmware-debian-up	Brings up Jessie VM w/ Docker capability" 
 	@echo "  vmware-debian-ssh	Log in to the VM" 
 
+test:
+	$(PY_TEST)
 test2:
-	$(PY2TEST) || true
+	$(PY2TEST)
 test3:
-	$(PY3TEST) || true
-test: test2 test3
+	$(PY3TEST)
+test23:
+	$(PY2TEST)
+	$(PY3TEST)
 
 install:
+	$(PY) setup.py install
+install2:
+	$(PY2) setup.py install
+install3:
+	$(PY3) setup.py install
+install23:
 	$(PY2) setup.py install
 	$(PY3) setup.py install
 
 analyze:
 	flake8 -j 1 --max-line-length=110					\
-	  --ignore=E221,E201,E202,E203,E223,E225,E226,E231,E241,E242,E261,E272,E302,W503,E701,E702,E,W	\
+	  --ignore=F401,E221,E201,E202,E203,E223,E225,E226,E231,E241,E242,E261,E272,E302,W503,E701,E702,E,W	\
 	  --exclude="__init__.py" \
 	  .
 
@@ -91,7 +97,7 @@ pylint:
 	cd .. && pylint cpppo --disable=W,C,R
 
 # Support uploading a new version of cpppo to pypi.  Must:
-#   o advance __version__ number in cpppo/misc.py
+#   o advance __version__ number in cpppo/version.py
 #   o log in to your pypi account (ie. for package maintainer only)
 upload:
 	python setup.py sdist upload
@@ -138,39 +144,26 @@ jessie64-%:
 	    vagrant box add jessie64 http://box.hardconsulting.com/jessie64-$*.box --provider $*; \
 	fi
 
-# Another more direct way of detecting the availability of a specific Vagrant box
-raring_virtualbox:	$(HOME)/.vagrant.d/boxes/raring/virtualbox
-
-precise64-virtualbox:	$(HOME)/.vagrant.d/boxes/precise64/virtualbox
-
-precise64-vmware_fusion:$(HOME)/.vagrant.d/boxes/precise64/vmware_fusion
-
-$(HOME)/.vagrant.d/boxes/raring/virtualbox:		vagrant
-	@if [ ! -d $@ ]; then 						\
-	    vagrant box add raring http://cloud-images.ubuntu.com/raring/current/raring-server-cloudimg-vagrant-amd64-disk1.box; \
-	fi
-
-$(HOME)/.vagrant.d/boxes/precise64/virtualbox:		vagrant
-	@if [ ! -d $@ ]; then 						\
-	    vagrant box add precise64 http://files.vagrantup.com/precise64.box;	\
-	fi
-
-$(HOME)/.vagrant.d/boxes/precise64/vmware_fusion: 	vagrant
-	@if [ ! -d $@ ]; then						\
-	    vagrant box add precise64 http://files.vagrantup.com/precise64_vmware_fusion.box; \
-	fi
 
 
 # Run only tests with a prefix containing the target string, eg test-blah
 test-%:
+	$(PY_TEST) *$*_test.py
+test2-%:
+	$(PY2TEST) *$*_test.py
+test3-%:
+	$(PY3TEST) *$*_test.py
+test23-%:
 	$(PY2TEST) *$*_test.py
 	$(PY3TEST) *$*_test.py
 
+unit-%:
+	$(PY_TEST) -k $*
 unit2-%:
 	$(PY2TEST) -k $*
 unit3-%:
 	$(PY3TEST) -k $*
-unit-%:
+unit23-%:
 	$(PY2TEST) -k $*
 	$(PY3TEST) -k $*
 
